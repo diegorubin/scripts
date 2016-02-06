@@ -24,7 +24,7 @@ def copy_mysql_databases():
 
 def generate_tarball(timestamp):
 
-    run("tar -jcvf /tmp/backup-%s.tar.bz2 %s" % (timestamp, DESTINY_PATH))
+    run("tar -jcvf %s %s" % (__get_tarball_filename(timestamp), DESTINY_PATH))
 
     return timestamp
 
@@ -42,26 +42,27 @@ def copy_applications_contents():
 def cryptfile(timestamp):
 
     # to decrypt: echo password | gpg --batch -q -o file.tar.bz2 --passphrase-fd 0 --decrypt file.tar.bz2.gpg
-    run("echo %s | gpg --batch -q --passphrase-fd 0 --cipher-algo AES256 -c /tmp/backup-%s.tar.bz2" %
-        (env.passphrase, timestamp))
+    run("echo %s | gpg --batch -q --passphrase-fd 0 --cipher-algo AES256 -c %s" %
+        (env.passphrase, __get_tarball_filename(timestamp)))
 
 
-def sync():
+def sync(timestamp):
 
-    run("mv /tmp/backup-*.tar.bz2.gpg %s/%s" % (env.grivepath, env.driverbackuppath))
+    run("mv %s.gpg %s/%s" % (__get_tarball_filename(timestamp), env.grivepath, env.driverbackuppath))
     run("grive -p %s -s %s" % (env.grivepath, env.driverbackuppath))
 
 
-def clear_backup_path():
+def clear_backup_path(timestamp):
 
     run("rm -rf /tmp/backup*")
+    run("rm  %s" % __get_tarball_filename(timestamp))
 
 
-def backup(commands):
+def backup():
 
     timestamp = int(time.time())
 
-    commands = commands.split(";")
+    commands = env.commands.split(',')
 
     create_output_directory()
 
@@ -76,6 +77,11 @@ def backup(commands):
 
     generate_tarball(timestamp)
     cryptfile(timestamp)
-    sync()
-    clear_backup_path()
+    sync(timestamp)
+    clear_backup_path(timestamp)
+
+
+def __get_tarball_filename(timestamp):
+
+    return "/tmp/%s-%s.tar.bz2" % (env.host, timestamp)
 
