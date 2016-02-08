@@ -1,5 +1,5 @@
 import time
-from fabric.api import env, roles, run
+from fabric.api import env, run
 
 DESTINY_PATH = "/tmp/backups"
 
@@ -39,6 +39,19 @@ def copy_applications_contents():
             (DESTINY_PATH, application, exclude, application))
 
 
+def copy_custom_directories_contents():
+
+    directories = env.custom_directories.split(',')
+
+    for directory in directories:
+
+        path = getattr(env, "custom_directory_%s_path" % directory)
+        options = getattr(env, "custom_directory_%s_options" % directory)
+
+        run("tar -zcvf %s/%s-directory.tar.gz %s %s" %
+            (DESTINY_PATH, directory, options, path))
+
+
 def cryptfile(timestamp):
 
     # to decrypt: echo password | gpg --batch -q -o file.tar.bz2 --passphrase-fd 0 --decrypt file.tar.bz2.gpg
@@ -54,8 +67,18 @@ def sync(timestamp):
 
 def clear_backup_path(timestamp):
 
-    run("rm -rf /tmp/backup*")
+    run("rm -rf %s" % DESTINY_PATH)
     run("rm  %s" % __get_tarball_filename(timestamp))
+
+
+def copy_systemv_service():
+
+    destiny_service_path = "%s/systemv_services" % (DESTINY_PATH)
+    run("mkdir -p %s" % destiny_service_path)
+
+    services = env.services.split(',')
+    for service in services:
+        run("cp /etc/init.d/%s %s" % (service, destiny_service_path))
 
 
 def backup():
@@ -74,6 +97,12 @@ def backup():
 
     if "applications" in commands:
         copy_applications_contents()
+
+    if "systemv" in commands:
+        copy_systemv_service()
+
+    if "custom_directories" in commands:
+        copy_custom_directories_contents()
 
     generate_tarball(timestamp)
     cryptfile(timestamp)
