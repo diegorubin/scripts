@@ -1,5 +1,5 @@
 import time
-from fabric.api import env, run
+from fabric.api import env, run, sudo
 
 DESTINY_PATH = "/tmp/backups"
 
@@ -18,8 +18,12 @@ def copy_mongodb_databases():
 
 
 def copy_mysql_databases():
+    command = ["mysqldump -u%s" % env.mysqluser]
+    if env.mysqlpasswd:
+        command.append("-p%s" % env.mysqlpasswd)
+    command.append("--all-databases")
 
-    run("mysqldump -u%s -p%s --all-databases > %s/mysql.sql"%(env.mysqluser, env.mysqlpasswd, DESTINY_PATH))
+    run("%s > %s/mysql.sql" % (' '.join(command), DESTINY_PATH))
 
 
 def generate_tarball(timestamp):
@@ -48,8 +52,19 @@ def copy_custom_directories_contents():
         path = getattr(env, "custom_directory_%s_path" % directory)
         options = getattr(env, "custom_directory_%s_options" % directory)
 
-        run("tar -zcvf %s/%s-directory.tar.gz %s %s" %
-            (DESTINY_PATH, directory, options, path))
+        is_sudo = ""
+        if hasattr(env, "custom_directory_%s_sudo" % directory):
+            is_sudo = getattr(env, "custom_directory_%s_sudo" % directory)
+
+        destiny_file = "%s/%s-directory.tar.gz" % (DESTINY_PATH, directory)
+
+        command = "tar -zcvf %s %s %s" % (destiny_file, options, path)
+
+        if is_sudo in ["true", "True", "1", "yes", "y", "t"]:
+            sudo(command)
+            sudo("chown  %s %s" % (env.user, destiny_file))
+        else:
+            run(command)
 
 
 def cryptfile(timestamp):
