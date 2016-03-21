@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import re
+import dbus
 
 from os import environ
 from evernote.api.client import EvernoteClient
@@ -30,8 +31,11 @@ def find_labels(content):
         process_label(m.group(1), m.group(2))
 
 def process_label(label, content):
-    print label
-    print clean_content(content)
+    content = clean_content(content)
+
+    task_list = re.match("task:(.+)", label)
+    if task_list:
+        process_task(task_list.group(1), content)
 
 def clean_content(content):
     content = content.replace("<br clear=\"none\"/>","\n")
@@ -39,6 +43,26 @@ def clean_content(content):
     content = content.replace("</div>","")
     return content
 
+def process_task(task_list, content):
+    remote_object = connect_to_gnomato()
+    description = "[Desenvolvimento] - %s" % content
+    dbus_interface = "com.diegorubin.Gnomato"
+
+    if remote_object:
+        exists = remote_object.TaskExists(task_list, description,
+            dbus_interface = dbus_interface)
+        if exists == "false":
+            remote_object.CreateTask(task_list, description,
+                dbus_interface = dbus_interface)
+
+def connect_to_gnomato():
+    bus = dbus.SessionBus()
+    try:
+        remote_object = bus.get_object("com.diegorubin.Gnomato",
+                                   "/com/diegorubin/Gnomato")
+        return remote_object
+    except:
+        return None
 
 if __name__ == "__main__":
     process_notes()
