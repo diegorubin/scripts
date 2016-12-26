@@ -14,7 +14,15 @@ def copy_mongodb_databases():
     databases = env.mongodatabases.split(',')
 
     for database in databases:
-        run("mongodump -h %s -d %s -o %s" % (env.mongohost, database, DESTINY_PATH))
+        command = ['mongodump']
+        if hasattr(env, "mongodatabase_%s_user" % database):
+            command.append("-u %s" % getattr(env, "mongodatabase_%s_user" % database))
+        if hasattr(env, "mongodatabase_%s_password" % database):
+            command.append("-p %s" % getattr(env, "mongodatabase_%s_password" % database))
+        command.append("-h %s" % env.mongohost)
+        command.append("-d %s" % database)
+        command.append("-o %s" % DESTINY_PATH)
+        run(' '.join(command))
 
 
 def copy_mysql_databases():
@@ -25,11 +33,8 @@ def copy_mysql_databases():
 
     run("%s > %s/mysql.sql" % (' '.join(command), DESTINY_PATH))
 
-
 def generate_tarball(timestamp):
-
     run("tar -jcvf %s %s" % (__get_tarball_filename(timestamp), DESTINY_PATH))
-
     return timestamp
 
 
@@ -123,7 +128,6 @@ def backup():
     cryptfile(timestamp)
     sync(timestamp)
     clear_backup_path(timestamp)
-
 
 def __get_tarball_filename(timestamp):
 
