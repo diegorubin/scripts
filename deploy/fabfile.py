@@ -4,13 +4,14 @@ def start_container():
     command = ['docker run --net=host -d']
     command.append("--name %s"%(env.container))
 
-    variables = env.variables.split(';')
-    for variable in variables:
+    for variable in env.variables.split(';'):
         command.append("-e %s"%(variable))
 
-    volumes = env.volumes.split(';')
-    for volume in volumes:
+    for volume in env.volumes.split(';'):
         command.append("-v %s"%(volume))
+
+    for port in env.ports.split(';'):
+        command.append("-p %s"%(port))
 
     command.append("%s:%s"%(env.image, env.version))
 
