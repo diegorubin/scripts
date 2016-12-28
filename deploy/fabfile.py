@@ -10,8 +10,9 @@ def start_container():
     for volume in env.volumes.split(';'):
         command.append("-v %s"%(volume))
 
-    for port in env.ports.split(';'):
-        command.append("-p %s"%(port))
+    if hasattr(env, "ports"):
+        for port in env.ports.split(';'):
+            command.append("-p %s"%(port))
 
     command.append("%s:%s"%(env.image, env.version))
 
